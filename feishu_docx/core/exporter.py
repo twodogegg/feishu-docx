@@ -9,6 +9,7 @@
 # 2026/01/28 16:00   Add whiteboard metadata export support
 # 2026/01/28 19:00   Add support for old doc format (/doc/)
 # 2026/01/28 19:30   Support both /sheet/ and /sheets/ URL formats
+# 2026/02/04 10:15   Persist document domain for media fallback
 # =====================================================
 """
 [INPUT]: 依赖 feishu_docx.core.parsers 的解析器，依赖 feishu_docx.auth 的认证器
@@ -18,6 +19,7 @@
 """
 
 import re
+from urllib.parse import urlparse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Optional
@@ -214,6 +216,7 @@ class FeishuExporter:
             输出文件路径
         """
         # 1. 解析 URL 和获取标题
+        self._set_document_domain_from_url(url)
         doc_info = self.parse_url(url)
         access_token = self.get_access_token()
         doc_title = self._get_document_title(doc_info, access_token)
@@ -274,6 +277,7 @@ class FeishuExporter:
             Markdown 格式的文档内容
         """
         doc_info = self.parse_url(url)
+        self._set_document_domain_from_url(url)
         access_token = self.get_access_token()
         return self._parse_document(
             doc_info, access_token, table_format, assets_dir=None,
@@ -417,6 +421,16 @@ class FeishuExporter:
         name = name.strip('. ')
         return name or "untitled"
 
+    def _set_document_domain_from_url(self, url: str) -> None:
+        """从文档 URL 提取域名并写入 SDK"""
+        try:
+            parsed = urlparse(url)
+            domain = parsed.netloc.strip()
+            if domain:
+                self.sdk.set_document_domain(domain)
+        except Exception:
+            pass
+
     # ==========================================================================
     # 知识空间批量导出
     # ==========================================================================
@@ -496,6 +510,9 @@ class FeishuExporter:
             save_dir = node_info.title or node_info.node_token
             if not silent:
                 console.print(f"[green]✓ 从 URL 解析得到 space_id:[/green] {space_id}")
+            self._set_document_domain_from_url(space_id_or_url)
+        else:
+            self.sdk.set_document_domain(domain)
 
         # 获取知识空间信息
         try:

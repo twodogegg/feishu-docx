@@ -5,6 +5,7 @@
 # @Date   ：2026/01/29 15:15
 # @Author ：leemysw
 # 2026/02/01 18:40   Refactor - 组合模式重构
+# 2026/02/04 10:15   Add domain-based download fallback
 # =====================================================
 """
 [INPUT]: 依赖 base.py, lark_oapi
@@ -148,6 +149,27 @@ class MediaAPI(SubModule):
                     console.print(f"[red]临时 URL 下载异常: {e}[/red]")
             else:
                 console.print(f"[red]获取临时下载 URL 失败[/red]")
+
+            # 策略3: 临时 URL 获取/下载失败，尝试拼接域名直接下载
+            document_domain = getattr(self._core, "document_domain", None)
+            if document_domain:
+                direct_url = (
+                    f"https://internal-api-drive-stream.{document_domain}.com/"
+                    f"space/api/box/stream/download/v2/cover/{file_token}"
+                )
+                try:
+                    direct_response = httpx.get(direct_url, timeout=30.0)
+                    if direct_response.status_code == 200:
+                        file_path = self.temp_dir / f"{file_token}{extension}"
+                        file_path.write_bytes(direct_response.content)
+                        console.print(f"[green]✓ 使用拼接 URL 下载成功[/green]")
+                        return str(file_path)
+                    else:
+                        console.print(f"[red]拼接 URL 下载失败 (HTTP {direct_response.status_code})[/red]")
+                except Exception as e:
+                    console.print(f"[red]拼接 URL 下载异常: {e}[/red]")
+            else:
+                console.print("[red]未设置文档域名，无法拼接下载 URL[/red]")
 
         # 记录最终失败
         self._log_error("drive.v1.media.download", response)
