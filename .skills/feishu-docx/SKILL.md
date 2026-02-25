@@ -41,6 +41,8 @@ The exported Markdown file will be saved with the document's title as filename.
 | `feishu-docx update <URL>` | Update specific block |
 | `feishu-docx export-wiki-space <URL>` | Batch export entire wiki space |
 | `feishu-docx export-workspace-schema <ID>` | Export bitable database schema |
+| `feishu-docx bitable-create-record <APP_TOKEN> <TABLE_ID> -j <JSON>` | Create bitable record |
+| `feishu-docx bitable-update-record <APP_TOKEN> <TABLE_ID> <RECORD_ID> -j <JSON>` | Update bitable record |
 | `feishu-docx auth` | OAuth authorization |
 | `feishu-docx config set` | Set credentials |
 | `feishu-docx config show` | Show current config |
@@ -100,6 +102,16 @@ feishu-docx export-workspace-schema <workspace_id>
 
 # Specify output file
 feishu-docx export-workspace-schema <workspace_id> -o ./schema.md
+```
+
+### Edit Bitable Records (CLI)
+
+```bash
+# Create one record
+feishu-docx bitable-create-record appXXXXXXXX tblYYYYYYYY -j '{"笔记标题":"测试记录","报错信息":"created by cli"}'
+
+# Update one record
+feishu-docx bitable-update-record appXXXXXXXX tblYYYYYYYY recZZZZZZZZ -j '{"报错信息":"updated by cli"}'
 ```
 
 ## Write Documents (CLI)

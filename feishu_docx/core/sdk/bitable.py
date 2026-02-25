@@ -15,8 +15,9 @@
 
 import json
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
+import lark_oapi as lark
 from lark_oapi.api.bitable.v1 import (
     AppTable,
     AppTableFieldForList,
@@ -41,6 +42,63 @@ console = get_console()
 
 class BitableAPI(SubModule):
     """多维表格 API"""
+
+    def create_record(
+            self,
+            app_token: str,
+            table_id: str,
+            fields: Dict[str, Any],
+            access_token: str,
+    ) -> dict:
+        """创建一条多维表格记录"""
+        request = (
+            lark.BaseRequest.builder()
+            .http_method(lark.HttpMethod.POST)
+            .uri(f"/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records")
+            .token_types({self._get_token_type()})
+            .body(json.dumps({"fields": fields}, ensure_ascii=False))
+            .build()
+        )
+        request.headers = {"Content-Type": "application/json; charset=utf-8"}
+
+        option = self._build_option(access_token)
+        response = self.client.request(request, option)
+
+        if not response.success():
+            self._log_error("bitable.v1.app_table_record.create", response)
+            raise RuntimeError(f"创建记录失败: {response.msg}")
+
+        data = json.loads(response.raw.content.decode("utf-8"))
+        return data.get("data", {}).get("record", {})
+
+    def update_record(
+            self,
+            app_token: str,
+            table_id: str,
+            record_id: str,
+            fields: Dict[str, Any],
+            access_token: str,
+    ) -> dict:
+        """更新一条多维表格记录"""
+        request = (
+            lark.BaseRequest.builder()
+            .http_method(lark.HttpMethod.PUT)
+            .uri(f"/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/{record_id}")
+            .token_types({self._get_token_type()})
+            .body(json.dumps({"fields": fields}, ensure_ascii=False))
+            .build()
+        )
+        request.headers = {"Content-Type": "application/json; charset=utf-8"}
+
+        option = self._build_option(access_token)
+        response = self.client.request(request, option)
+
+        if not response.success():
+            self._log_error("bitable.v1.app_table_record.update", response)
+            raise RuntimeError(f"更新记录失败: {response.msg}")
+
+        data = json.loads(response.raw.content.decode("utf-8"))
+        return data.get("data", {}).get("record", {})
 
     def get_bitable_info(self, app_token: str, access_token: str) -> dict:
         """获取多维表格基本信息"""

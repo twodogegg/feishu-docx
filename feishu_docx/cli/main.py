@@ -87,9 +87,15 @@ app.command()(update)
 # ==============================================================================
 # 注册命令 - APaaS
 # ==============================================================================
-from .cmd_apaas import export_workspace_schema
+from .cmd_apaas import (
+    bitable_create_record,
+    bitable_update_record,
+    export_workspace_schema,
+)
 
 app.command(name="export-workspace-schema")(export_workspace_schema)
+app.command(name="bitable-create-record")(bitable_create_record)
+app.command(name="bitable-update-record")(bitable_update_record)
 
 # ==============================================================================
 # 注册命令 - 认证

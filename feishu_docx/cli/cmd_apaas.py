@@ -13,8 +13,9 @@
 [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
 """
 
+import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import typer
 from rich.panel import Panel
@@ -138,4 +139,137 @@ def export_workspace_schema(
 
     except Exception as e:
         console.print(f"[red]❌ 导出失败: {e}[/red]")
+        raise typer.Exit(1)
+
+
+def _build_exporter_and_token(
+        token: Optional[str],
+        app_id: Optional[str],
+        app_secret: Optional[str],
+        auth_mode: Optional[str],
+        lark: bool,
+) -> tuple[FeishuExporter, str]:
+    """复用凭证解析逻辑，返回 exporter 与 access_token"""
+    if token:
+        exporter = FeishuExporter.from_token(token)
+        return exporter, token
+
+    final_app_id, final_app_secret, final_auth_mode = get_credentials(app_id, app_secret, auth_mode)
+    if not final_app_id or not final_app_secret:
+        raise RuntimeError("需要提供凭证")
+
+    exporter = FeishuExporter(
+        app_id=final_app_id,
+        app_secret=final_app_secret,
+        is_lark=lark,
+        auth_mode=final_auth_mode,
+    )
+    access_token = exporter.get_access_token()
+    return exporter, access_token
+
+
+def _parse_fields_json(fields_json: str) -> Dict[str, Any]:
+    """解析 --fields-json 参数并校验为对象"""
+    try:
+        data = json.loads(fields_json)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"fields-json 不是合法 JSON: {e}")
+
+    if not isinstance(data, dict):
+        raise RuntimeError("fields-json 必须是 JSON 对象，例如: {\"标题\":\"测试\"}")
+    return data
+
+
+def bitable_create_record(
+        app_token: str = typer.Argument(..., help="多维表格 app_token（base URL 中的 token）"),
+        table_id: str = typer.Argument(..., help="数据表 table_id"),
+        fields_json: str = typer.Option(
+            ...,
+            "-j",
+            "--fields-json",
+            help="记录字段 JSON，例如: '{\"笔记标题\":\"测试\"}'",
+        ),
+        token: Optional[str] = typer.Option(
+            None,
+            "-t",
+            "--token",
+            envvar="FEISHU_ACCESS_TOKEN",
+            help="用户访问凭证",
+        ),
+        app_id: Optional[str] = typer.Option(None, "--app-id", help="飞书应用 App ID"),
+        app_secret: Optional[str] = typer.Option(None, "--app-secret", help="飞书应用 App Secret"),
+        auth_mode: Optional[str] = typer.Option(None, "--auth-mode", help="认证模式: tenant / oauth"),
+        lark: bool = typer.Option(False, "--lark", help="使用 Lark (海外版)"),
+):
+    """
+    [green]▶[/] 在多维表格中创建记录
+    """
+    try:
+        fields = _parse_fields_json(fields_json)
+        exporter, access_token = _build_exporter_and_token(token, app_id, app_secret, auth_mode, lark)
+        record = exporter.sdk.bitable.create_record(
+            app_token=app_token,
+            table_id=table_id,
+            fields=fields,
+            access_token=access_token,
+        )
+
+        record_id = record.get("record_id", "")
+        console.print(
+            Panel(
+                f"✅ 创建成功\n\n记录 ID: [green]{record_id}[/green]\n"
+                f"字段: [dim]{json.dumps(record.get('fields', {}), ensure_ascii=False)}[/dim]",
+                border_style="green",
+            )
+        )
+    except Exception as e:
+        console.print(f"[red]❌ 创建失败: {e}[/red]")
+        raise typer.Exit(1)
+
+
+def bitable_update_record(
+        app_token: str = typer.Argument(..., help="多维表格 app_token（base URL 中的 token）"),
+        table_id: str = typer.Argument(..., help="数据表 table_id"),
+        record_id: str = typer.Argument(..., help="记录 ID"),
+        fields_json: str = typer.Option(
+            ...,
+            "-j",
+            "--fields-json",
+            help="要更新的字段 JSON，例如: '{\"报错信息\":\"更新内容\"}'",
+        ),
+        token: Optional[str] = typer.Option(
+            None,
+            "-t",
+            "--token",
+            envvar="FEISHU_ACCESS_TOKEN",
+            help="用户访问凭证",
+        ),
+        app_id: Optional[str] = typer.Option(None, "--app-id", help="飞书应用 App ID"),
+        app_secret: Optional[str] = typer.Option(None, "--app-secret", help="飞书应用 App Secret"),
+        auth_mode: Optional[str] = typer.Option(None, "--auth-mode", help="认证模式: tenant / oauth"),
+        lark: bool = typer.Option(False, "--lark", help="使用 Lark (海外版)"),
+):
+    """
+    [green]▶[/] 更新多维表格记录
+    """
+    try:
+        fields = _parse_fields_json(fields_json)
+        exporter, access_token = _build_exporter_and_token(token, app_id, app_secret, auth_mode, lark)
+        record = exporter.sdk.bitable.update_record(
+            app_token=app_token,
+            table_id=table_id,
+            record_id=record_id,
+            fields=fields,
+            access_token=access_token,
+        )
+
+        console.print(
+            Panel(
+                f"✅ 更新成功\n\n记录 ID: [green]{record.get('record_id', record_id)}[/green]\n"
+                f"字段: [dim]{json.dumps(record.get('fields', {}), ensure_ascii=False)}[/dim]",
+                border_style="green",
+            )
+        )
+    except Exception as e:
+        console.print(f"[red]❌ 更新失败: {e}[/red]")
         raise typer.Exit(1)
