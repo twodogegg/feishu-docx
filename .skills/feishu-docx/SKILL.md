@@ -135,6 +135,9 @@ feishu-docx write "https://xxx.feishu.cn/docx/xxx" -c "## 新章节\n\n内容"
 feishu-docx write "https://xxx.feishu.cn/docx/xxx" -f ./content.md
 ```
 
+> Note: In some environments, `feishu-docx write` may report success but add `0` blocks.
+> If this happens, use the **direct Docx OpenAPI append flow** below (recommended default fallback).
+
 ### Update Specific Block
 
 ```bash
@@ -155,6 +158,57 @@ feishu-docx update "https://xxx.feishu.cn/docx/xxx" -b blk123abc -c "新内容"
 > 2. Find the target block ID from HTML comments
 > 3. Use `feishu-docx update` with that block ID
 
+## Preferred Append Path (Verified)
+
+This path was verified successful on **2026-02-25** for appending a new line to an existing Feishu doc.
+
+### 1) Get a usable token (tenant or oauth)
+
+```bash
+# App-level token (tenant mode)
+feishu-docx auth --auth-mode tenant
+
+# Optional: user-level token (oauth mode)
+feishu-docx auth --auth-mode oauth
+```
+
+### 2) Append by calling Docx OpenAPI directly
+
+```bash
+TOKEN=$(jq -r '.access_token' /Users/goudan/.feishu-docx/token.json)
+DOC_ID="RTWyd8geMoCfTQxyZmCcpC7ynTf"   # target document id
+ROOT_BLOCK_ID="$DOC_ID"                # append to document root
+
+curl -sS -X POST "https://open.feishu.cn/open-apis/docx/v1/documents/${DOC_ID}/blocks/${ROOT_BLOCK_ID}/children" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json; charset=utf-8" \
+  -d '{
+    "index": -1,
+    "children": [
+      {
+        "block_type": 2,
+        "text": {
+          "elements": [
+            {
+              "text_run": {
+                "content": "追加一行测试（个人权限API直写）"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }'
+```
+
+### 3) Verify
+
+```bash
+feishu-docx export "https://xxx.feishu.cn/docx/${DOC_ID}" --stdout | tail -n 40
+```
+
+Expected: response `code: 0`, and exported content includes the appended line.
+
 ## Tips
 
 - Images auto-download to `{doc_title}/` folder
@@ -162,3 +216,5 @@ feishu-docx update "https://xxx.feishu.cn/docx/xxx" -b blk123abc -c "新内容"
 - Use `-b` to export with block IDs for later updates
 - Token auto-refreshes, no re-auth needed
 - For Lark (overseas): add `--lark` flag
+- For append operations, if CLI `write` returns `添加了 0 个 Block`, switch to the direct OpenAPI append flow above.
+- The direct OpenAPI flow works with either tenant token or oauth token, as long as token scope and document permissions are sufficient.
