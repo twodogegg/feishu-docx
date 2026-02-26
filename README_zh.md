@@ -218,6 +218,36 @@ feishu-docx export "https://xxx.feishu.cn/docx/xxx"
 
 ---
 
+## 🧯 写入常见问题（实战）
+
+1. `write -c` 多行文本出现字面量 `\n`
+- 原因：shell 转义不当，`"\n"` 被当作普通字符传入。
+- 建议：多行内容优先用 `-f` 传 Markdown 文件，或使用 shell `$'...'`。
+
+2. CLI 提示写入成功，但内容格式不符合预期
+- 建议：写入后立刻执行校验，而不是只看成功提示。
+- 推荐命令：`feishu-docx export "<DOC_URL>" --stdout -b`
+
+3. `update` 返回 `code: 1770001` / `invalid param`
+- 现象：部分 block 类型或 payload 会触发参数校验失败。
+- 应急：先追加一条单行纯文本记录保证信息落库，再回头做格式化修复。
+
+4. 稳妥追加流程（推荐）
+
+```bash
+cat > /tmp/entry.md <<'MD'
+## 新增账号（YYYY-MM-DD）
+- 网站： http://example.com
+- 用户名： alice
+- 密码： secret
+MD
+
+feishu-docx write "<DOC_URL>" -f /tmp/entry.md
+feishu-docx export "<DOC_URL>" --stdout -b | tail -n 80
+```
+
+---
+
 ## 🛠️ 开发
 
 ```bash

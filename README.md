@@ -222,6 +222,36 @@ feishu-docx export "https://xxx.feishu.cn/docx/xxx"
 
 ---
 
+## 🧯 Write Troubleshooting (Field Notes)
+
+1. Literal `\n` appears after `write -c`
+- Cause: shell escaping turns `\n` into plain text.
+- Recommendation: for multiline input, prefer `-f <markdown_file>` or shell `$'...'`.
+
+2. CLI says success, but formatting is wrong
+- Recommendation: always verify with export immediately after write.
+- Recommended command: `feishu-docx export "<DOC_URL>" --stdout -b`
+
+3. `update` returns `code: 1770001` / `invalid param`
+- Observation: some block types/payloads fail validation.
+- Hotfix: append a single-line plain-text record first to preserve data, then format later.
+
+4. Safer append flow
+
+```bash
+cat > /tmp/entry.md <<'MD'
+## New Account (YYYY-MM-DD)
+- URL: http://example.com
+- Username: alice
+- Password: secret
+MD
+
+feishu-docx write "<DOC_URL>" -f /tmp/entry.md
+feishu-docx export "<DOC_URL>" --stdout -b | tail -n 80
+```
+
+---
+
 ## 🗺️ Roadmap
 
 - [x] Document/Sheet/Wiki export

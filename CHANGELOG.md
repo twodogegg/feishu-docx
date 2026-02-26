@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- 文档新增“写入常见问题（实战）”章节（`README.md` / `README_zh.md`）
+- Skill 新增 `Field Notes (2026-02-26)`，覆盖写入校验与回退策略（`.skills/feishu-docx/SKILL.md`）
+
+### Notes
+- 建议多行写入优先使用 `-f`，避免 `write -c` 的 shell 转义导致字面量 `\n`
+- 建议写入后使用 `export --stdout -b` 做即时验证
+- 记录了 `update` 可能返回 `1770001 invalid param` 的应急处理路径
+
 ## [0.2.0] - 2026-02-01
 
 ### 🚀 Major Refactoring

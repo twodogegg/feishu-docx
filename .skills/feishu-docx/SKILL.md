@@ -230,3 +230,27 @@ Expected: response `code: 0`, and exported content includes the appended line.
 - For Lark (overseas): add `--lark` flag
 - For append operations, if CLI `write` returns `添加了 0 个 Block`, switch to the direct OpenAPI append flow above.
 - The direct OpenAPI flow works with either tenant token or oauth token, as long as token scope and document permissions are sufficient.
+
+## Field Notes (2026-02-26)
+
+- `feishu-docx write -c` may write literal `\n` text if shell escaping is incorrect. For multiline content, prefer `-f <markdown_file>` or shell `$'...'` string.
+- Do not trust only `✅ 写入成功` output. Always verify by exporting the document immediately.
+- Prefer verification with block IDs:
+  - `feishu-docx export "<DOC_URL>" --stdout -b`
+  - this can reveal hidden formatting issues such as escaped newline literals.
+- `feishu-docx update` may fail with `code: 1770001` (`invalid param`) for some block types/content payloads.
+- If update fails and task is urgent, fallback to append a plain text record in one line, then revisit formatting later.
+
+### Safe Append Recipe
+
+```bash
+cat > /tmp/entry.md <<'MD'
+## 新增账号（YYYY-MM-DD）
+- 网站： http://example.com
+- 用户名： alice
+- 密码： secret
+MD
+
+feishu-docx write "<DOC_URL>" -f /tmp/entry.md
+feishu-docx export "<DOC_URL>" --stdout -b | tail -n 80
+```
